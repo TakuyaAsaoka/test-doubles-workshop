@@ -6,80 +6,110 @@ import java.lang.Exception
 
 class MissileLauncherTests {
 	@Test
-	fun `launchCodeのisSigned()が偽ならlaunch()が実行されない`() {
+	fun `launchCodeのisExpired()が偽の場合、isSigned()が偽ならdisable()は呼ばれるがlaunch()が実行されない`() {
 		val launcher = MissileLauncher()
-		val missile = DummyMissile()
-		val launchCode = UnsignedExpiredStubLaunchCode()
+		val missile = MockMissile()
+		val launchCode = UnsignedUnexpiredStubLaunchCode()
 
 		launcher.launchMissile(missile, launchCode)
+
+		missile.assert()
 	}
 
 	@Test
-	fun `launchCodeのisSigned()が真ならlaunch()が呼ばれる`(){
+	fun `launchCodeのisExpired()が偽の場合、isSigned()が真ならdisable()は呼ばれないが、launch()が呼ばれる`(){
 		val launcher = MissileLauncher()
 		val missile = SpyMissile()
-		val launchCode = SignedExpiredStubLaunchCode()
+		val launchCode = SignedUnexpiredStubLaunchCode()
 
 		launcher.launchMissile(missile, launchCode)
 
-		assertEquals(true,missile.wasCalled)
+		assertEquals(false, missile.disable_was_called)
+		assertEquals(true,missile.launch_was_called)
 	}
 
 	@Test
-	fun `launchCodeのisExpired()が真の場合、isSignedの値に関わらず、missileのlaunch()を呼ばない`(){
+	fun `launchCodeのisExpired()が真の場合、isSigned()が真ならmissileのdisable()は呼ばれるがlaunch()を呼ばない`(){
 		val launcher = MissileLauncher()
 		val missile = SpyMissile()
 		val signedLaunchCode = SignedExpiredStubLaunchCode()
-		val unsignedLaunchCode = UnsignedExpiredStubLaunchCode()
 
 		launcher.launchMissile(missile, signedLaunchCode)
 
-		assertEquals(false,missile.wasCalled)
+		assertEquals(true, missile.disable_was_called)
+		assertEquals(false,missile.launch_was_called)
+	}
+
+	@Test
+	fun `launchCodeのisExpired()が真の場合、isSigned()が偽ならmissileのdisable()は呼ばれるがlaunch()を呼ばない`(){
+		val launcher = MissileLauncher()
+		val missile = SpyMissile()
+		val unsignedLaunchCode = UnsignedExpiredStubLaunchCode()
 
 		launcher.launchMissile(missile, unsignedLaunchCode)
 
-		assertEquals(false,missile.wasCalled)
+		assertEquals(true, missile.disable_was_called)
+		assertEquals(false,missile.launch_was_called)
 	}
 
+	@Test
+	fun `launchCodeのisExpired()が真の場合、isSigned()の真ならmissileのdisable()を呼んでlaunch()を呼ばない`() {
+		val launcher = MissileLauncher()
+		val missile = SpyMissile()
+		val signedLaunchCode = SignedExpiredStubLaunchCode()
+
+		launcher.launchMissile(missile, signedLaunchCode)
+
+		assertEquals(true, missile.disable_was_called)
+		assertEquals(false, missile.launch_was_called)
+	}
+
+	@Test
+	fun `launchCodeのisExpired()が真の場合、isSigned()の偽ならmissileのdisable()を呼んでlaunch()を呼ばない`() {
+		val launcher = MissileLauncher()
+		val missile = SpyMissile()
+		val unsignedLaunchCode = UnsignedExpiredStubLaunchCode()
+
+		launcher.launchMissile(missile, unsignedLaunchCode)
+
+		assertEquals(true, missile.disable_was_called)
+		assertEquals(false, missile.launch_was_called)
+	}
 }
-
-
 
 class DummyMissile(): Missile {
 	override fun launch() {
 		throw Exception("このメソッドは実行されるべきではありません。")
 	}
-}
-//class UnsignedStubLaunchCode(): LaunchCode {
-//	override fun isSigned(): Boolean {
-//		return false
-//	}
-//
-//}
-//
-//class SignedStubLaunchCode(): LaunchCode {
-//	override fun isSigned(): Boolean {
-//		return true
-//	}
-//}
-class SpyMissile(): Missile {
-	var wasCalled = false
-	override fun launch() {
-		wasCalled = true
+	override fun disable() {
 	}
 }
 
-//class StubLaunchCode(): LaunchCode {
-//	var isSigned_return_value = null
-//	var isExpired_return_value = null
-//
-//	override fun isSigned(): Boolean {
-//		return isSigned_return_value!!
-//	}
-//	override fun isExpired(): Boolean {
-//		return isExpired_return_value!!
-//	}
-//}
+class SpyMissile(): Missile {
+	var launch_was_called = false
+	var disable_was_called = false
+	override fun launch() {
+		launch_was_called = true
+	}
+	override fun disable() {
+		disable_was_called = true
+	}
+}
+class MockMissile(): Missile {
+	var launch_was_called = false
+	var disable_was_called = false
+	override fun launch() {
+		launch_was_called = true
+	}
+	override fun disable() {
+		disable_was_called = true
+	}
+
+	fun assert() {
+		assertEquals(true, this.disable_was_called)
+		assertEquals(false, this.launch_was_called)
+	}
+}
 
 class SignedExpiredStubLaunchCode(): LaunchCode {
 	override fun isSigned(): Boolean {
@@ -98,20 +128,21 @@ class UnsignedExpiredStubLaunchCode(): LaunchCode {
 	}
 }
 
-//class SignedUnexpiredStubLaunchCode(): LaunchCode {
-//	override fun isSigned(): Boolean {
-//		return true
-//	}
-//	override fun isExpired(): Boolean {
-//		return false
-//	}
-//}
-//
-//class UnsignedUnexpiredStubLaunchCode(): LaunchCode {
-//	override fun isSigned(): Boolean {
-//		return false
-//	}
-//	override fun isExpired(): Boolean {
-//		return false
-//	}
-//}
+class SignedUnexpiredStubLaunchCode(): LaunchCode {
+	override fun isSigned(): Boolean {
+		return true
+	}
+	override fun isExpired(): Boolean {
+		return false
+	}
+}
+
+class UnsignedUnexpiredStubLaunchCode(): LaunchCode {
+	override fun isSigned(): Boolean {
+		return false
+	}
+	override fun isExpired(): Boolean {
+		return false
+	}
+}
+
